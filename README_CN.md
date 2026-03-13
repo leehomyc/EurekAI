@@ -381,6 +381,8 @@ claude
   - **关闭**（默认）— 不接飞书，纯 CLI 不变
   - **仅推送** — 关键节点（实验完成、review 出分、checkpoint 等待）发飞书 webhook 通知。无需额外进程，skill 里 `curl` 一下就行。手机收推送，不能回复
   - **双向交互** — 通过 [feishu-claude-code](https://github.com/joewongjc/feishu-claude-code) 全双工桥接。在飞书里审批/拒绝 idea、回复 checkpoint。需要 `python main.py` 和 Claude Code 同时运行（可都丢服务器 `screen` 里常驻）
+- [ ] **LaTeX 论文写作 skill** — 根据 review 反馈起草、编辑、迭代 LaTeX 论文。逐 section 生成、图表排版、参考文献管理
+- [ ] **LaTeX 编辑器集成** — Overleaf 或本地 TeX 实时同步、编译预览、diff 感知编辑（只重写改动部分）
 - [ ] **Zotero MCP 集成** — 直接读取 Zotero 论文库的论文、标签和批注
 - [ ] 更多执行者 × 评审者组合（Gemini、DeepSeek 等）
 

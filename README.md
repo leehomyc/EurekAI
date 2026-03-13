@@ -434,6 +434,8 @@ This lets GLM (acting as Claude Code) familiarize itself with the skill files an
   - **Off** (default) — no Feishu, pure CLI as-is
   - **Push only** — lightweight webhook notifications at key events (experiment done, review scored, checkpoint waiting). No extra process needed, just `curl` from within skills. Mobile push, no reply
   - **Interactive** — full bidirectional via [feishu-claude-code](https://github.com/joewongjc/feishu-claude-code). Approve/reject ideas, reply to checkpoints from Feishu. Requires `python main.py` running alongside Claude Code (both can run on a remote server via `screen`)
+- [ ] **LaTeX paper writing skill** — draft, edit, and iterate on LaTeX papers from review feedback. Section-by-section generation, figure/table placement, bibliography management
+- [ ] **LaTeX editor integration** — real-time Overleaf or local TeX sync, compile preview, diff-aware edits (only rewrite changed sections)
 - [ ] **Zotero MCP integration** — read papers, tags, and annotations directly from Zotero library
 - [ ] More executor × reviewer combinations (Gemini, DeepSeek, etc.)
 
