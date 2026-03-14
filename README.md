@@ -838,20 +838,36 @@ Codex CLI uses your existing `OPENAI_API_KEY` (from `~/.codex/config.toml` or en
         "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
         "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
         "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5",
-        "CODEX_API_KEY": "your_minimax_api_key",
-        "CODEX_API_BASE": "https://api.minimax.chat/v1/",
-        "CODEX_MODEL": "MiniMax-M2.5"
+        "MINIMAX_API_KEY": "your_minimax_api_key"
     },
     "mcpServers": {
-        "codex": {
-            "command": "/opt/homebrew/bin/codex",
-            "args": [
-                "mcp-server"
-            ]
+        "minimax-chat": {
+            "command": "/usr/bin/python3",
+            "args": ["/Users/YOUR_USERNAME/.claude/mcp-servers/minimax-chat/server.py"],
+            "env": {
+                "MINIMAX_API_KEY": "your_minimax_api_key",
+                "MINIMAX_BASE_URL": "https://api.minimax.chat/v1",
+                "MINIMAX_MODEL": "MiniMax-M2.5"
+            }
         }
     }
 }
 ```
+
+> **⚠️ Extra step for Alt B:** Codex MCP uses OpenAI's Responses API (`/v1/responses`), which MiniMax does not support ([details](https://github.com/openai/codex/discussions/7782)). So Alt B uses a **custom MiniMax MCP server** instead of Codex. You need to:
+>
+> 1. Copy `mcp-servers/minimax-chat/server.py` → `~/.claude/mcp-servers/minimax-chat/server.py`
+> 2. `pip3 install httpx`
+> 3. After setup, tell Claude Code to rewrite all skills:
+>
+> ```
+> Read skills/auto-review-loop-minimax/SKILL.md as a reference.
+> It replaces mcp__codex__codex with mcp__minimax-chat__minimax_chat.
+> Now rewrite ALL other skills that use mcp__codex__codex / mcp__codex__codex-reply
+> to use mcp__minimax-chat__minimax_chat instead, following the same pattern.
+> ```
+>
+> Full guide: [`docs/MINIMAX_MCP_GUIDE.md`](docs/MINIMAX_MCP_GUIDE.md)
 
 </details>
 
