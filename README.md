@@ -70,7 +70,7 @@ ARIS reads the paper, summarizes its limitations, clones the codebase, and gener
 - **2026-03-19** — ![NEW](https://img.shields.io/badge/NEW-red?style=flat-square) 🖼️ **[`paper-poster`](skills/paper-poster/SKILL.md)** — Conference poster (tcbposter → A0/A1 PDF + PPTX + SVG). Venue colors, visual review, Codex review. Community contribution by [@dengzhe-hou](https://github.com/dengzhe-hou)
 - **2026-03-19** — ![NEW](https://img.shields.io/badge/NEW-red?style=flat-square) 🔗 **Workflow 1.5 upgraded** — `/experiment-bridge` now includes **GPT-5.4 cross-model code review** before GPU deployment (`code review: true` by default). 📊 **W&B fix** — real `wandb.Api()` calls
 <details>
-<summary>Earlier updates (2026-03-12 — 2026-03-18)</summary>
+<summary>Earlier updates (2026-03-12 — 2026-03-18, 12 entries)</summary>
 
 - **2026-03-18** — 🎤 `paper-slides` + 🔁 Codex+Claude bridge + 🖱️ Cursor guide + 🤖 Codex CLI skills + 📝 `grant-proposal` + 🎨 `paper-illustration` (Gemini) + 📊 CitationClaw
 - **2026-03-17** — 🔧 Git code sync + 🆓 ModelScope guide + parameter pass-through
