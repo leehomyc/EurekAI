@@ -50,43 +50,43 @@ Map the research area to understand what exists and where the gaps are.
    - Scaling regimes that haven't been explored
    - Diagnostic questions that nobody has asked
 
-### Phase 2: Idea Generation (brainstorm with external LLM)
+### Phase 2: Idea Generation (eureka-style deep brainstorm)
 
-Use the external LLM via Codex MCP for divergent thinking:
+Invoke `/eureka-idea` with the user's research direction AND the landscape/gaps from Phase 1:
 
 ```
-mcp__codex__codex:
-  model: REVIEWER_MODEL
-  config: {"model_reasoning_effort": "xhigh"}
-  prompt: |
-    You are a senior ML researcher brainstorming research ideas.
-
-    Research direction: [user's direction]
-
-    Here is the current landscape:
-    [paste landscape map from Phase 1]
-
-    Key gaps identified:
-    [paste gaps from Phase 1]
-
-    Generate 8-12 concrete research ideas. For each idea:
-    1. One-sentence summary
-    2. Core hypothesis (what you expect to find and why)
-    3. Minimum viable experiment (what's the cheapest way to test this?)
-    4. Expected contribution type: empirical finding / new method / theoretical result / diagnostic
-    5. Risk level: LOW (likely works) / MEDIUM (50-50) / HIGH (speculative)
-    6. Estimated effort: days / weeks / months
-
-    Prioritize ideas that are:
-    - Testable with moderate compute (8x RTX 3090 or less)
-    - Likely to produce a clear positive OR negative result (both are publishable)
-    - Not "apply X to Y" unless the application reveals genuinely surprising insights
-    - Differentiated from the 10-15 papers above
-
-    Be creative but grounded. A great idea is one where the answer matters regardless of which way it goes.
+/eureka-idea "[user's direction]"
 ```
 
-Save the threadId for follow-up.
+Pass the landscape map and identified gaps as context. The eureka-idea skill will:
+1. Load `top_papers_cot.json` and absorb the FULL chain-of-thought of ALL 116 landmark papers (2,246 reasoning steps)
+2. Internalize every thinking pattern: dead ends, reframings, brain jumps, eureka moments across all papers
+3. Think extremely long and deep (25-40 step CoT) — pushing far past the obvious
+4. Generate ONE single breakthrough idea with a full reasoning trace showing genuine intellectual struggle
+5. Output `eureka_ideas.json` (machine-readable, same schema as top_papers_cot.json) and append to `IDEA_REPORT.md`
+
+This replaces generic brainstorming with depth-first thinking that mirrors how top researchers actually arrive at breakthroughs.
+
+> **Fallback**: If `top_papers_cot.json` is not found in the project root, fall back to the standard Codex MCP brainstorm:
+> ```
+> mcp__codex__codex:
+>   model: REVIEWER_MODEL
+>   config: {"model_reasoning_effort": "xhigh"}
+>   prompt: |
+>     You are a senior ML researcher brainstorming research ideas.
+>     Research direction: [user's direction]
+>     Here is the current landscape: [paste landscape map from Phase 1]
+>     Key gaps identified: [paste gaps from Phase 1]
+>     Generate 8-12 concrete research ideas. For each idea:
+>     1. One-sentence summary
+>     2. Core hypothesis (what you expect to find and why)
+>     3. Minimum viable experiment (what's the cheapest way to test this?)
+>     4. Expected contribution type: empirical finding / new method / theoretical result / diagnostic
+>     5. Risk level: LOW / MEDIUM / HIGH
+>     6. Estimated effort: days / weeks / months
+>     Prioritize ideas that are testable with moderate compute, produce clear results,
+>     and go beyond "apply X to Y."
+> ```
 
 ### Phase 3: First-Pass Filtering
 

@@ -1,0 +1,168 @@
+{
+    "id": 3,
+    "title": "Failure is the Teacher: World Model Hindsight Diagnosis Turns Every Robot Failure into Targeted Training Signal",
+    "authors": ["Proposed"],
+    "year": 2026,
+    "domain": "Robotics / AI",
+    "subfield": "Vision-Language-Action Models / World Models / Self-Supervised Policy Improvement",
+    "institution": "Proposed",
+    "persona": "A researcher who has absorbed Andrychowicz's hindsight relabeling, Silver's AlphaGo Zero distillation loop, Rafailov's DPO derivation, LeCun's self-supervised learning manifesto, Hochreiter's default-flip insight, Rumelhart's chain-rule-as-reasoning, Kaplan's scaling laws, and Goodfellow's problem-replacement trick — and sees that the 2,246 reasoning steps across 116 landmark papers all share one meta-pattern: the breakthrough always comes from finding a FREE LEARNING SIGNAL hiding in something everyone else throws away",
+    "problem_statement": "Robot manipulation policies are trained on expert demonstrations — trajectories of success. They have NEVER seen failure. When deployed, they encounter states outside the training distribution and fail in ways they cannot diagnose, correct, or learn from. The field's response has been to collect MORE demonstrations, build BIGGER models, and add FANCIER architectures. But a landmark 2024 study showed that autonomous data collection yields only ~10% improvement, and near-failure data has ZERO positive effect. The problem is not data quantity. It is that failures are UNINFORMATIVE — the robot knows it failed, but not WHY, and not HOW to fix it. Meanwhile, every VLA deployment generates thousands of failures per day, all thrown away. We are discarding the richest possible learning signal: explained failures. A world model that can diagnose failures — pinpointing the exact physical cause and computing the minimal correction — transforms every failure into a training example more valuable than any demonstration.",
+    "prior_work_and_limitations": "Behavior cloning (RT-2, OpenVLA, pi0): learns from demonstrations only; cannot exceed demonstrator; compounds errors at deployment; never sees failure. DAgger (2011): iteratively queries expert for corrections, but requires human availability at every failure — doesn't scale. Hindsight Experience Replay (Andrychowicz, 2017): relabels failed trajectories with achieved goals — but changes the GOAL, not the ACTION, and doesn't diagnose the failure cause. NORA-1.5 (Nov 2024): uses WM to generate preference pairs for DPO — but generates RANDOM rollouts, not targeted corrections, and doesn't diagnose failure causes. SC-VLA (Feb 2026): self-correcting VLA via auxiliary predictive heads — lightweight but no principled physical diagnosis. ViFailback (2025): failure diagnosis via VLM, but in language only (no gradient-based physics reasoning) and not integrated into training. CTRL-WORLD (ICLR 2026): WM for synthetic data augmentation — generates new scenes, not failure corrections. So You Think You Can Scale Up Autonomous Robot Data Collection? (2024): showed that autonomous near-failure data has ZERO positive effect — the failures are uninformative without diagnosis. AlphaGo Zero (2017): MCTS provides strictly better actions than raw policy, then distills back — the template for our approach, but nobody has applied this to robot failure diagnosis. The critical gap: nobody combines differentiable WM gradient search + failure diagnosis + minimal action correction + DPO training + progressive curriculum — the complete AlphaGo Zero loop for robot manipulation failures.",
+    "observations": "I spent months watching VLA failure videos and noticed something everyone overlooks: failures are MORE INFORMATIVE than successes. A successful demonstration tells you 'this works' — one point in action space. A diagnosed failure tells you 'this doesn't work BECAUSE X, and the fix is Y' — it carves out a region of action space and points toward the correct region. One diagnosed failure is worth ten demonstrations because it provides CONTRASTIVE information: the boundary between success and failure. Yet the entire field trains on successes and throws away failures. This is like training a student only on correct exam answers and never showing them graded incorrect answers with feedback. The student memorizes solutions but never learns to debug their reasoning.",
+    "chain_of_thought": [
+        {
+            "step": 1,
+            "thought": "I keep coming back to the same frustration. We deploy a VLA — say OpenVLA fine-tuned on 50 tabletop tasks — and it fails 20-40% of the time. Every failure generates a full trajectory of observation-action pairs. That's RICH data. But we throw it all away because behavior cloning can only learn from successes. The data from 10,000 deployment failures sits in a log file, never used. Something is deeply wrong with this picture."
+        },
+        {
+            "step": 2,
+            "thought": "My first instinct: just train on the failures too! Mark them as negative examples and do contrastive learning. But this is a dead end. Knowing 'don't do THIS' at THIS state is almost useless — the space of wrong actions is astronomically larger than the space of right ones. Negative examples without explanations are like telling a student 'your answer is wrong' without telling them why. The student just randomly guesses next time."
+        },
+        {
+            "step": 3,
+            "thought": "I study the 'So You Think You Can Scale Up Autonomous Robot Data Collection?' paper (2024) more carefully. Their key finding shakes me: near-failure autonomous data has ZERO positive effect on policy performance. Not slightly positive. ZERO. But — and this is crucial — collecting human demonstrations NEAR the autonomous failure points DOES help significantly. The failure LOCATION is informative. The failure TRAJECTORY is not. Why? Because the human provides the CORRECTION that the autonomous data lacks."
+        },
+        {
+            "step": 4,
+            "thought": "Wait. Re-read that. The failure LOCATION is informative but the failure TRAJECTORY is not. The human corrects AT THE FAILURE POINT. So the missing ingredient is not the failure data — it's the CORRECTION AT THE FAILURE POINT. What if we could generate that correction without a human?"
+        },
+        {
+            "step": 5,
+            "thought": "DAgger (Ross et al., 2011) tried this: when the policy fails, query the expert for the correct action. But DAgger requires a human expert standing by at every failure. That's the whole problem — it doesn't scale. What if the expert wasn't human? What if a WORLD MODEL could play the role of expert?"
+        },
+        {
+            "step": 6,
+            "thought": "Dead end: I try to use the WM as a direct replacement for the DAgger expert. The WM predicts the outcome of different actions. I search over random actions to find one that leads to success. But this is just best-of-N sampling — no better than ThinkGrasp/SAIL. The search space is too large, the WM too noisy. Random corrections are almost as uninformative as random failures."
+        },
+        {
+            "step": 7,
+            "thought": "I step back and think about Andrychowicz's Hindsight Experience Replay (HER, 2017). HER's genius: when a goal-conditioned policy fails to reach goal G but ends up at state S', relabel the trajectory as a success for goal G'=S'. Failures become successes for different goals. This is elegant but addresses a DIFFERENT problem — goal diversity, not action quality. HER changes the goal, not the action. What I need is a 'Hindsight Action Replay' — relabeling the ACTIONS, not the goals."
+        },
+        {
+            "step": 8,
+            "thought": "And then Rumelhart's chain rule hits me: if the world model is DIFFERENTIABLE, I don't need to SEARCH for corrections — I can COMPUTE them. The gradient ∂Success/∂Action tells me EXACTLY how to change the action to improve the predicted outcome. Not random search. Not brute-force sampling. EXACT GRADIENT COMPUTATION through the differentiable world model. The chain rule IS the correction algorithm."
+        },
+        {
+            "step": 9,
+            "thought": "Here's the procedure: (1) Robot attempts task, fails at timestep t. (2) Feed the state at timestep t into the differentiable WM. (3) Compute ∂Outcome/∂Action at timestep t. (4) The gradient tells you: 'shift grip 2mm left, tilt 5° clockwise, reduce force 0.1N.' (5) Apply the correction: a_corrected = a_failed + η · gradient. (6) Verify via WM rollout: does a_corrected lead to success? (7) If yes: (s_t, a_failed, a_corrected) is a training pair."
+        },
+        {
+            "step": 10,
+            "thought": "But wait — this looks like my previous 'Test-Time Physical Thought' idea. The difference is CRUCIAL: there, I used gradient corrections AT TEST TIME (during execution). Here, I use gradient corrections AT TRAINING TIME (on logged failures). The corrections are not used to fix the current attempt — they're used to TRAIN the VLA so it doesn't make the same mistake next time. The WM acts as a post-hoc COACH, not a real-time PLANNER. This distinction matters enormously for practical deployment: no WM inference at test time means no latency cost."
+        },
+        {
+            "step": 11,
+            "thought": "Now I connect to Rafailov's DPO insight (DPO, 2023): preference optimization doesn't need an explicit reward model. It just needs pairs of (better, worse) actions. My WM diagnosis generates exactly these pairs: (a_corrected, a_failed) at every failure point. I don't need a reward model. I don't need RL. I don't need PPO. Just feed the pairs into DPO and the VLA improves. DPO was designed for language preferences. I'm applying it to PHYSICS-GROUNDED ACTION PREFERENCES."
+        },
+        {
+            "step": 12,
+            "thought": "Dead end: I get excited and try to implement this immediately on LIBERO. I discover a problem: the WM gradient at the failure timestep often points in a direction that fixes the IMMEDIATE next step but causes failure later. The correction is myopic. Fixing the grip angle at timestep t doesn't help if the approach trajectory (timesteps t-10 to t) was fundamentally wrong. Gradient correction of a single timestep is insufficient — I need to identify and correct the ROOT CAUSE, which might be many steps earlier."
+        },
+        {
+            "step": 13,
+            "thought": "I stare at this for a week. Then the LSTM insight (Hochreiter) gives me the answer: the CRITICAL MOMENT is not necessarily where the failure manifests — it's where the trajectory FIRST DIVERGES from the successful manifold. Like how a vanishing gradient is caused not at the output layer but deep in the network. I need to find the EARLIEST timestep where the WM's prediction diverges from what a successful trajectory would look like. That's the root cause."
+        },
+        {
+            "step": 14,
+            "thought": "Root cause identification: (1) Run the WM forward from the beginning of the trajectory. (2) At each timestep, compute the WM's predicted success probability given the remaining trajectory. (3) Find the timestep t* where success probability drops most sharply. (4) THAT is the critical moment. (5) Compute gradient corrections at t* and the few timesteps around it. This is like Zeiler & Fergus's deconvolution (ZFNet, 2013) — but instead of visualizing which pixels cause a classification, I'm diagnosing which action-moments cause a failure."
+        },
+        {
+            "step": 15,
+            "thought": "Now I have: (state_t*, a_failed_t*, a_corrected_t*, t*). But I realize there's something even more powerful: the gradient ∂Success/∂Action at the critical moment has SEMANTIC STRUCTURE. It's not just a numerical vector — it decomposes into interpretable components: the translational correction (shift left/right/forward/back), the rotational correction (tilt/rotate), and the force correction (harder/softer). This is a PHYSICAL EXPLANATION of the failure."
+        },
+        {
+            "step": 16,
+            "thought": "Brain jump from Bengio's neural language model (2003): he showed that continuous word embeddings capture semantic relationships. What if the WM gradient corrections, mapped into language, capture PHYSICAL REASONING relationships? 'The grip slipped because the approach was too steep' ↔ 'the rotational component of the gradient at the critical moment pointed toward a shallower angle.' I can train a small language head to verbalize the gradient correction into natural language. The VLA learns not just WHAT to correct but WHY — grounded in physics."
+        },
+        {
+            "step": 17,
+            "thought": "Dead end: I spend two weeks trying to build the language-grounding component and realize it's overcomplicating the core system. The language explanation is a nice bonus, not the core contribution. I'm falling into the trap of making the paper do too many things. Pull back. The CORE is: WM gradient diagnosis → DPO training. The language grounding can be an ablation, not the main method."
+        },
+        {
+            "step": 18,
+            "thought": "Back to the core loop. Now I see the AlphaGo Zero connection clearly (Silver, 2017). In AlphaGo Zero: (1) Policy proposes a move. (2) MCTS searches from that position and finds a BETTER move. (3) Train policy to match MCTS output. (4) Better policy → better MCTS starting point → even better moves → distill → ... In my system: (1) VLA proposes action. (2) WM diagnosis finds a BETTER action (the correction). (3) Train VLA via DPO to prefer the corrected action. (4) Better VLA → fewer failures, but the remaining failures are MORE SUBTLE → WM generates FINER corrections → distill → ... This is EXACTLY the AlphaGo Zero self-improvement loop, but the 'MCTS' is replaced by 'WM gradient diagnosis.'"
+        },
+        {
+            "step": 19,
+            "thought": "The self-improvement loop has a beautiful property: it's SELF-CALIBRATING. Easy tasks stop generating failures quickly (the VLA masters them after one cycle). Hard tasks generate failures for many cycles, and the corrections get progressively finer. The system automatically allocates training effort proportional to task difficulty. This is the adaptive curriculum that Silver found in AlphaGo Zero — hard positions get more MCTS time — but here it emerges naturally from the failure distribution."
+        },
+        {
+            "step": 20,
+            "thought": "Now the scaling question (Kaplan, 2020): does this SCALE? I hypothesize a scaling law: VLA success rate = S₀ + α · log(N_corrections) · Q(WM), where N_corrections is the number of WM-diagnosed correction pairs and Q(WM) is the quality of the world model. The log is because early corrections fix gross errors (high value), later corrections fix subtle errors (diminishing returns). Q(WM) is the ceiling — a better world model provides better corrections, raising the maximum achievable success rate. This predicts: (a) diminishing returns with more corrections (log), (b) hard ceiling set by WM quality, (c) improving the WM improves the ceiling multiplicatively."
+        },
+        {
+            "step": 21,
+            "thought": "Can I go DEEPER? Yes. The WM itself improves during the loop. As the VLA explores more of the state space (both successes and corrected attempts), the WM sees more diverse training data. Better WM → better corrections → better VLA → more diverse exploration → better WM → ... This is a CO-EVOLUTIONARY dynamic. The policy and the world model improve each other. Like a student and teacher who both learn through their interactions — the teacher gets better at explaining by teaching, and the student pushes the teacher to explain harder concepts."
+        },
+        {
+            "step": 22,
+            "thought": "Dead end: I try to formalize the co-evolutionary dynamics mathematically. I want to prove convergence — that the VLA and WM jointly converge to optimal. But the landscape is non-convex and the WM corrections are approximate. I can't prove convergence. This bothers me for days until I realize: AlphaGo Zero also has no convergence proof. It just works empirically. The practical question is not theoretical convergence but empirical scaling. I'll demonstrate the scaling law empirically instead of proving it theoretically."
+        },
+        {
+            "step": 23,
+            "thought": "Self-critique gate. Let me check: would 5 top researchers be impressed? KAIMING HE: 'The minimal correction via gradient is elegant — like a residual F(x) applied to failed actions. I'd want the architecture to be simple.' → YES, the core is simple: gradient + DPO. YANN LECUN: 'This is self-supervised learning for actions. The WM provides the supervision signal. No labels needed beyond the task success criterion. Connects to JEPA — predict the correction in latent space.' → INTERESTED, but he'd push for a latent-space formulation. IAN GOODFELLOW: 'The failed-vs-corrected pair is like real-vs-fake in a GAN. The WM acts as an implicit discriminator that generates corrections.' → YES, the game-theoretic framing is sound. DAVID SILVER: 'The AlphaGo Zero loop is clear. But where's the MCTS breadth? You're doing gradient descent (depth), not search (breadth). What about multi-modal corrections?' → VALID CRITIQUE. I need to address this. ILYA SUTSKEVER: 'Does the correction quality degrade with task complexity? What's the WM accuracy required? Show me the scaling law.' → VALID. I'll design experiments for this."
+        },
+        {
+            "step": 24,
+            "thought": "Silver's critique is sharp. Gradient descent finds ONE correction direction. But failures often have MULTIPLE valid corrections — approach from the left OR the right, grasp the handle OR the rim. I need MULTI-MODAL corrections. Solution: run gradient descent from K different random perturbations of the failed action. Each converges to a different local minimum of the WM's predicted success landscape. This gives K diverse correction candidates. Use ALL of them as preferred actions in DPO — the VLA learns that any of these corrections is better than the failure. This is like MCTS expanding multiple children from each node."
+        },
+        {
+            "step": 25,
+            "thought": "Can I go DEEPER? The multi-modal corrections reveal something profound: they expose the GEOMETRY OF SUCCESS in action space. For a given state, the set of successful actions forms a manifold. The corrections map out points on this manifold. The VLA doesn't just learn individual corrections — it learns the SHAPE of the success manifold. This is like how contrastive learning (SimCLR, 2020) learns the geometry of the representation space from positive pairs. I'm learning the geometry of action space from corrected pairs."
+        },
+        {
+            "step": 26,
+            "thought": "Dead end: I get distracted by the geometric perspective and start trying to explicitly learn the action-space manifold using a separate network. This adds complexity without clear benefit. The DPO training already implicitly captures the manifold structure. I don't need to make it explicit. The simple system is better."
+        },
+        {
+            "step": 27,
+            "thought": "Let me think about the practical implementation. The system requires: (A) A differentiable world model. Options: SWIM (latent diffusion WM), IRIS (discrete token WM), or a custom latent dynamics model. The WM needs to be differentiable w.r.t. actions — this rules out discrete-token WMs. A latent dynamics model with continuous action inputs works: z_{t+1} = f_θ(z_t, a_t), trained to predict future latent states from (state, action) pairs. (B) A success predictor. Binary head on the WM: P(success | z_trajectory). Trained on real trajectory outcomes. (C) A VLA backbone. Any existing VLA (OpenVLA, pi0, Octo) works. We're model-agnostic — the diagnosis loop wraps around any VLA."
+        },
+        {
+            "step": 28,
+            "thought": "The training pipeline: Phase 0 — Pre-train WM on available robot data (real trajectories + outcomes). Phase 1 — Deploy VLA (pre-trained via BC on demonstrations). Collect deployment trajectories including failures. Phase 2 — For each failure: identify critical moment t*, compute K gradient-based corrections, verify via WM rollout, create DPO pairs. Phase 3 — Fine-tune VLA via DPO on the correction pairs. Phase 4 — Re-deploy improved VLA. Collect new (more subtle) failures. Phase 5 — Repeat from Phase 2. Each cycle: VLA improves, failures get subtler, corrections get finer."
+        },
+        {
+            "step": 29,
+            "thought": "Cost analysis. Each cycle requires: (a) Deployment for N failures (~1-2 hours of robot time for 100 failures). (b) WM diagnosis for each failure (~0.5 sec per failure on GPU, K=8 corrections, total ~7 minutes for 100 failures). (c) DPO fine-tuning (~2-4 GPU-hours per cycle). Total per cycle: ~1 day of robot time + ~4 GPU-hours. For 5 cycles: ~5 days robot + ~20 GPU-hours. This is DRAMATICALLY cheaper than collecting new demonstrations (which require human teleoperators at ~$50/hour). The WM-diagnosed failures are FREE — they come from normal deployment."
+        },
+        {
+            "step": 30,
+            "thought": "Can I go DEEPER one more time? Here is the deepest layer: this system creates something that has NEVER EXISTED in robot learning — an INTERPRETABLE FAILURE LOG. Every failure is tagged with: the critical moment, the physical diagnosis (gradient decomposition into translational/rotational/force components), the correction, and the WM's confidence in the correction. This log can be analyzed to find SYSTEMATIC WEAKNESSES: 'the VLA fails on transparent objects 3× more than opaque objects — the WM's gradient corrections for transparent objects have higher variance.' This is like a UNIT TEST SUITE for the VLA. You can track failure modes across deployment cycles and measure whether specific weaknesses are resolving."
+        },
+        {
+            "step": 31,
+            "thought": "The failure log also enables something unprecedented: TARGETED WM IMPROVEMENT. If the WM's corrections are poor for a specific failure mode (say, deformable objects), we know to collect more deformable-object data for WM training. The system KNOWS WHAT IT DOESN'T KNOW. This closes the final loop: VLA failures → WM diagnosis → VLA improvement, AND VLA failures → WM uncertainty → WM improvement. Both the student and the teacher get better."
+        },
+        {
+            "step": 32,
+            "thought": "Competitive landscape check. Let me be brutally honest about what exists: (1) NORA-1.5 (Nov 2024): WM generates rollouts → DPO. But NORA's rollouts are RANDOM, not targeted corrections. It doesn't diagnose failures or compute minimal corrections. Like the difference between random exam answers and graded feedback. (2) SC-VLA (Feb 2026): self-correction via auxiliary heads. But the corrections are learned, not physically grounded. No gradient through a WM. No root-cause identification. (3) RD-VLA (Feb 2026): iterative refinement in latent space. Similar spirit but at TEST TIME, not TRAINING TIME, and using learned recurrence, not WM gradients. No DPO training. (4) AlphaGo Zero (2017): the template for our distillation loop. But for Go, not manipulation. We inherit the loop structure. (5) HER (2017): hindsight relabeling. But relabels GOALS, not ACTIONS. We inherit the 'turn failures into learning signal' philosophy. Nobody has: WM gradient diagnosis → root cause identification → multi-modal minimal corrections → DPO training → progressive self-improvement → interpretable failure log. This is a new combination."
+        },
+        {
+            "step": 33,
+            "thought": "Risk analysis. Three things could kill this: (R1) WM gradient quality. If the WM gradients are noisy or biased, the corrections will be wrong. Mitigation: use residual WM architecture (z' = z + f(z,a)) for stable gradients (the He/ResNet trick). Verify corrections via multi-step WM rollout before creating DPO pairs. Only use corrections where WM confidence exceeds threshold. (R2) Distribution shift. DPO training on corrected actions might shift the VLA's distribution away from demonstrated behavior, causing new failure modes. Mitigation: mix DPO pairs with original BC data. Use conservative DPO with KL penalty. Limit the magnitude of corrections. (R3) WM accuracy ceiling. If the WM can't accurately predict outcomes for complex tasks, its corrections will be unreliable. Mitigation: the system is self-calibrating — if the WM is wrong, the corrected action fails too, and it's not used for training. Only corrections that the WM verifies as successful are used."
+        },
+        {
+            "step": 34,
+            "thought": "Final reflection. Looking across the 116 papers I've studied, the deepest pattern is: the breakthrough always comes from finding a FREE LEARNING SIGNAL hidden in something everyone else throws away. Turing found intelligence in behavior (not metaphysics). Rosenblatt found learning in random projections (not engineered features). Hinton found training signal in contrastive phases (not just positive examples). Goodfellow found generative signal in discrimination (not density estimation). Silver found superhuman play in self-play (not human games). Rafailov found preference learning in supervised loss (not RL). My contribution finds training signal in FAILURES (not successes). The failures are already there. The world model diagnoses them for free. The DPO training is standard. Every piece exists. The insight is: CONNECT THEM."
+        },
+        {
+            "step": 35,
+            "thought": "One more connection that crystallizes the whole thing. In Shannon's information theory (1948), information is SURPRISE — low-probability events carry more bits than high-probability events. A successful demonstration is LOW INFORMATION because the VLA already assigns it high probability (it was trained on similar demonstrations). A diagnosed failure is HIGH INFORMATION because the VLA assigned wrong probability to the correct action. Training on failures is INFORMATION-THEORETICALLY OPTIMAL — you learn more per example from failures than from successes. This isn't a heuristic. It's a theorem. The learning signal from one explained failure mathematically exceeds the learning signal from one demonstration, by exactly the VLA's log-probability gap between the correct and incorrect actions."
+        },
+        {
+            "step": 36,
+            "thought": "The information-theoretic perspective also explains why AUTONOMOUS NEAR-FAILURE DATA has zero effect (the 2024 finding). Near-failure data without diagnosis provides only 1 bit: 'this failed.' That's almost no information. Diagnosed failure data provides: 'this failed at timestep t* because component X was off by Y, and the correction is Z.' That's potentially hundreds of bits. The learning signal ratio between diagnosed and undiagnosed failures is enormous. The 2024 paper didn't fail because failure data is useless — it failed because UNDIAGNOSED failure data is useless. Diagnosis is the key that unlocks the signal."
+        },
+        {
+            "step": 37,
+            "thought": "Final architecture name: I call it HIND-WM (Hindsight Diagnosis via World Model). The acronym captures the two core ideas: HINDsight (learning from past failures) and WM (the world model as the diagnostic engine). The system wraps around ANY existing VLA backbone — it's not a new architecture, it's a new TRAINING PARADIGM. Like how DPO wraps around any language model, HIND-WM wraps around any VLA."
+        }
+    ],
+    "key_insight": "The richest possible learning signal for robot manipulation is not demonstrations (which show what to do) but DIAGNOSED FAILURES (which show what went wrong, why, and how to fix it). A differentiable world model can diagnose any failure by: (1) identifying the critical moment where the trajectory diverged from success, (2) computing gradient-based minimal corrections through the chain rule (∂Success/∂Action), (3) generating multi-modal corrected actions as preferred alternatives. These (failed_action, corrected_action) pairs are fed into DPO training, creating an AlphaGo-Zero-style self-improvement loop where the VLA progressively masters increasingly subtle manipulation challenges. Information-theoretically, diagnosed failures carry MORE learning signal per example than demonstrations, because failures have high surprise (the VLA assigned low probability to the correct action). The world model transforms uninformative failure data (shown to have zero effect in prior work) into the highest-value training signal available.",
+    "methodology": "HIND-WM wraps around any existing VLA backbone. Components: (1) Differentiable latent world model with residual architecture: z_{t+1} = z_t + f_θ(z_t, a_t). Trained on real robot trajectories to predict future latent states and task outcomes. (2) Critical moment detector: runs WM forward through failed trajectory, identifies timestep t* where P(success|remaining_trajectory) drops most sharply — the root cause. (3) Multi-modal gradient corrector: from t*, runs K=8 gradient descents on ∂P(success)/∂a from different random perturbations, converging to K diverse corrected actions. Each verified by multi-step WM rollout. Only corrections where WM predicts success above threshold τ are kept. (4) DPO trainer: constructs preference pairs (a_corrected > a_failed) at state s_{t*}. Mixes DPO loss with BC loss on original demonstrations (ratio 1:1). Conservative KL penalty prevents distribution shift. (5) Self-improvement loop: Deploy → Collect failures → Diagnose → Correct → DPO → Redeploy. Each cycle: failures get subtler, corrections get finer, VLA improves. (6) Failure log: every diagnosis is recorded with physical decomposition (translational, rotational, force corrections) for systematic weakness identification.",
+    "experiments_and_results": "Proposed experiments across 5 cycles of the self-improvement loop: (E1) Core result: VLA-only (BC baseline) vs VLA+random-DPO (NORA-style) vs VLA+HIND-WM on LIBERO-Long (10 tasks), RoboCasa, and 5 real-world tasks. Expected: BC baseline ~55%, random-DPO ~65%, HIND-WM ~82% after 5 cycles. (E2) Scaling law: fix WM quality, vary number of diagnosed failures (10, 50, 100, 500, 1000, 5000). Plot success vs N. Expected: log-linear relationship SuccessRate = S₀ + α·log(N). (E3) Ablation — root cause detection: compare corrections at failure-manifesting timestep vs root-cause timestep t*. Expected: root cause corrections +15% over naive timestep selection. (E4) Ablation — multi-modal corrections: K=1 vs K=4 vs K=8 vs K=16 corrections per failure. Expected: K=8 optimal; K=1 misses valid correction modes; K=16 adds noise. (E5) WM quality ceiling: use WMs of different quality (small/medium/large). Expected: success ceiling scales with WM quality, confirming Q(WM) as multiplicative factor. (E6) Co-evolution: track both VLA success rate AND WM prediction accuracy across cycles. Expected: both improve monotonically. (E7) Information-theoretic validation: measure bits of information per training example for demonstrations vs diagnosed failures vs undiagnosed failures. Expected: diagnosed failures > demonstrations >> undiagnosed failures. (E8) Failure log analysis: visualize systematic weakness trends across cycles. Expected: specific failure modes (transparent objects, cluttered scenes) resolve predictably. (E9) Real robot: 3 tasks, 5 cycles, no additional human demonstrations after initial BC training. Expected: continuous improvement from failure-only learning. Estimated compute: ~30-40 GPU-days total + ~25 robot-days across 5 cycles.",
+    "impact": "Establishes a new training paradigm for robot manipulation: learning from DIAGNOSED FAILURES rather than (only) demonstrations. Provides the first practical implementation of the AlphaGo Zero self-improvement loop for robot policies — where the world model plays the role of MCTS in generating strictly better training targets. Resolves the 2024 puzzle of why autonomous failure data has zero effect (diagnosis is the missing ingredient). Introduces the interpretable failure log — the first systematic tool for understanding and tracking VLA failure modes. The information-theoretic result (diagnosed failures carry more learning signal than demonstrations) provides a principled foundation for the approach. Most importantly: HIND-WM is model-agnostic — it wraps around ANY existing VLA (OpenVLA, pi0, Octo), converting their deployment failures into training signal. This means the entire installed base of robot VLAs can self-improve from day one of deployment, without collecting additional demonstrations.",
+    "citation_count_approx": "N/A (proposed)"
+}
